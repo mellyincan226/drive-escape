@@ -1370,9 +1370,44 @@ async function switchCity(name, lng, lat, countryCode) {
   }
 }
 
-// ── 首次加载：杭州（预生成数据，秒开）──
-(async function initHangzhou() {
+// ── URL 参数：支持 ?city=xxx ──
+function updateURL(name) {
+  const url = new URL(window.location);
+  url.searchParams.set('city', name);
+  history.replaceState(null, '', url.toString());
+}
+
+// 切换城市时更新 URL
+const _origSwitchCity = switchCity;
+switchCity = async function(name, lng, lat, cc) {
+  await _origSwitchCity(name, lng, lat, cc);
+  updateURL(name);
+};
+
+// ── 首次加载 ──
+(async function init() {
   showLoading(t('loading'));
+
+  // 检查 URL 参数是否指定了城市
+  const urlCity = new URLSearchParams(window.location.search).get('city');
+
+  if (urlCity) {
+    // URL 指定了城市，通过 Nominatim 搜索
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(urlCity)}&format=json&addressdetails=1&limit=1&accept-language=zh`, { headers: { 'User-Agent': 'DriveEscape/1.0' } });
+      const data = await res.json();
+      if (data.length > 0) {
+        const item = data[0];
+        const name = item.display_name.split(",")[0];
+        const cc = item.address?.country_code || '';
+        searchInput.value = name;
+        await _origSwitchCity(name, parseFloat(item.lon), parseFloat(item.lat), cc);
+        return;
+      }
+    } catch(e) {}
+  }
+
+  // 默认加载杭州（预生成数据）
   try {
     const res = await fetch('data/hangzhou.json');
     const data = await res.json();
@@ -1394,7 +1429,7 @@ async function switchCity(name, lng, lat, countryCode) {
     hideLoading();
   } catch(e) {
     console.error('Failed to load preset data, falling back to API', e);
-    switchCity("杭州", 120.15, 30.26);
+    await _origSwitchCity("杭州", 120.15, 30.26, 'cn');
   }
 })();
 </script>
