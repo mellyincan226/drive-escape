@@ -1168,19 +1168,25 @@ async function switchCity(name, lng, lat, countryCode) {
     // 海外：用 Overpass API 获取行政边界
     showLoading(t('loadingOverseas'));
 
-    // 分两层查询：远距离查县级（level 6），近距离查镇级（level 7-8）
-    // level 6 对应：法国省、德国县、日本都道府县在 level 4 所以也兼容
-    const queries = [
+    // 根据国家选择合适的行政级别
+    const isJapan = countryCode === 'jp';
+    const queries = isJapan ? [
+      // 日本：level 4 = 都道府県, level 7 = 市区町村
+      { radius: 400000, levels: "4", labelKey: "loadingAdmin" },
+      { radius: 400000, levels: "7", labelKey: "loadingDetail" }
+    ] : [
+      // 其他国家：level 5-6 = 省/县, level 7-8 = 市/镇
       { radius: 400000, levels: "5|6", labelKey: "loadingAdmin" },
       { radius: 400000, levels: "4", labelKey: "loadingAdmin", fallback: true },
-      { radius: 150000, levels: "7|8", labelKey: "loadingDetail" }
+      { radius: 300000, levels: "7", labelKey: "loadingDetail" },
+      { radius: 150000, levels: "8", labelKey: "loadingDetail" }
     ];
 
     for (const q of queries) {
       // fallback 查询只在前面数据太少时才执行
       if (q.fallback && allCountyFeatures.length >= 10) continue;
       showLoading(t(q.labelKey));
-      const query = `[out:json][timeout:60];
+      const query = `[out:json][timeout:90];
         relation["boundary"="administrative"]["admin_level"~"^(${q.levels})$"]
         (around:${q.radius},${lat},${lng});
         out geom;`;
@@ -1204,37 +1210,46 @@ async function switchCity(name, lng, lat, countryCode) {
             const outerWays = el.members.filter(m => m.type === "way" && m.role === "outer" && m.geometry);
             if (!outerWays.length) return;
 
-            // 尝试将多个 way 首尾相连成完整环
-            const rings = [];
+            // 将多个 way 首尾相连成完整环（健壮版）
             const segments = outerWays.map(w => w.geometry.map(p => [p.lon, p.lat]));
-            const used = new Set();
+            const rings = [];
 
-            while (used.size < segments.length) {
-              let ring = null;
-              for (let i = 0; i < segments.length; i++) {
-                if (used.has(i)) continue;
-                if (!ring) {
-                  ring = [...segments[i]];
-                  used.add(i);
-                  continue;
-                }
-                const last = ring[ring.length - 1];
-                const first = segments[i][0];
-                const lastR = segments[i][segments[i].length - 1];
-                if (Math.abs(last[0]-first[0]) < 0.001 && Math.abs(last[1]-first[1]) < 0.001) {
-                  ring.push(...segments[i].slice(1));
-                  used.add(i);
-                  i = -1; // restart search
-                } else if (Math.abs(last[0]-lastR[0]) < 0.001 && Math.abs(last[1]-lastR[1]) < 0.001) {
-                  ring.push(...segments[i].reverse().slice(1));
-                  used.add(i);
-                  i = -1;
-                }
-              }
-              if (ring) rings.push(ring);
-              else break;
+            function ptsClose(a, b) {
+              return Math.abs(a[0]-b[0]) < 0.0001 && Math.abs(a[1]-b[1]) < 0.0001;
             }
 
+            const remaining = segments.map((s,i) => i);
+            while (remaining.length > 0) {
+              let ring = [...segments[remaining.shift()]];
+              let changed = true;
+              while (changed) {
+                changed = false;
+                for (let j = remaining.length - 1; j >= 0; j--) {
+                  const seg = segments[remaining[j]];
+                  const rEnd = ring[ring.length - 1];
+                  const rStart = ring[0];
+                  if (ptsClose(rEnd, seg[0])) {
+                    ring.push(...seg.slice(1));
+                    remaining.splice(j, 1); changed = true;
+                  } else if (ptsClose(rEnd, seg[seg.length - 1])) {
+                    ring.push(...[...seg].reverse().slice(1));
+                    remaining.splice(j, 1); changed = true;
+                  } else if (ptsClose(rStart, seg[seg.length - 1])) {
+                    ring.unshift(...seg.slice(0, -1));
+                    remaining.splice(j, 1); changed = true;
+                  } else if (ptsClose(rStart, seg[0])) {
+                    ring.unshift(...[...seg].reverse().slice(0, -1));
+                    remaining.splice(j, 1); changed = true;
+                  }
+                }
+              }
+              rings.push(ring);
+            }
+
+            // 如果拼接完全失败，用各段单独作为 polygon
+            if (!rings.length && segments.length) {
+              segments.forEach(s => rings.push(s));
+            }
             if (!rings.length) return;
 
             const geom = rings.length === 1
