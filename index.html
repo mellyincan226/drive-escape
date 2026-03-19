@@ -1576,7 +1576,8 @@ function dismissWelcome() {
 
 async function welcomeSelectCity(name) {
   dismissWelcome();
-  // 先显示城市名，再 API 搜索
+  // 立即显示 loading + 城市名
+  showLoading(t('loading'));
   document.getElementById("title-sub").textContent = t('subtitle', { city: name });
   document.getElementById("legend-origin").textContent = t('originCity', { city: name });
   document.title = t('pageTitle', { city: name });
@@ -1624,6 +1625,7 @@ async function welcomeSelectCity(name) {
             const cc = item.address?.country_code || '';
             input.value = name;
             dismissWelcome();
+            showLoading(t('loading'));
             document.getElementById('city-search').value = name;
             await switchCity(name, parseFloat(item.lon), parseFloat(item.lat), cc);
           };

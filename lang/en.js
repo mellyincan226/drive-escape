@@ -24,5 +24,5 @@ window.LANG = {
   welcomeHeadline: 'Where can you escape by car?',
   welcomeSub: 'Enter your city and explore how far you can drive in a weekend',
   welcomeQuickLabel: 'Popular cities',
-  welcomeCities: ['London', 'Paris', 'Tokyo', 'Sydney']
+  welcomeCities: ['London', 'Paris', 'Tokyo', 'Shanghai', 'Sydney']
 };
